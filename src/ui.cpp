@@ -1,5 +1,6 @@
 #include "ui.hpp"
 
+#include <cfloat>
 #include <cstddef>
 
 #include "imgui.h"
@@ -28,13 +29,34 @@ bool weightControl(const char* label, float* value, float min, float max,
 // separation: <= 1.006 convergent vs >= 1.05 fractal on the presets).
 constexpr float kGrowthWarnRatio = 1.02f;
 
+// Iterations are capped at 8, so a refinement holds at most 9 levels.
+constexpr int kMaxLevels = 9;
+
 void schemeStats(const subdiv::RefineResult& result, int requestedIterations, bool closed) {
     const std::size_t levels = result.levels.size();
     ImGui::Text("levels computed: %zu / %d, points at finest: %zu",
                 levels - 1, requestedIterations, result.levels.back().size());
+
+    // Live convergence plots (M9): perimeter approaches the limit curve's
+    // arc length when converging (flat tail) and grows geometrically in the
+    // fractal regime; max edge length must tend to 0 for any convergent
+    // scheme. Recomputed per frame — a few thousand float ops at most.
+    float perims[kMaxLevels];
+    float maxEdges[kMaxLevels];
+    const int n = static_cast<int>(levels) < kMaxLevels ? static_cast<int>(levels) : kMaxLevels;
+    for (int k = 0; k < n; ++k) {
+        const auto& level = result.levels[static_cast<std::size_t>(k)];
+        perims[k] = subdiv::perimeter(level, closed);
+        maxEdges[k] = subdiv::maxEdgeLength(level, closed);
+    }
+    ImGui::PlotLines("perimeter / level", perims, n, 0, nullptr,
+                     0.0f, FLT_MAX, ImVec2(0, 42));
+    ImGui::PlotLines("max edge / level", maxEdges, n, 0, nullptr,
+                     0.0f, FLT_MAX, ImVec2(0, 42));
+
     if (levels >= 2) {
-        const float prev = subdiv::perimeter(result.levels[levels - 2], closed);
-        const float last = subdiv::perimeter(result.levels[levels - 1], closed);
+        const float prev = perims[n - 2];
+        const float last = perims[n - 1];
         const float ratio = prev > 0.0f ? last / prev : 1.0f;
         ImGui::Text("perimeter: %.3f (x%.3f per level)", last, ratio);
         if (ratio > kGrowthWarnRatio) {

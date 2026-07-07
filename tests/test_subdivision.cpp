@@ -136,6 +136,12 @@ static void testPerimeter() {
     const float p6 = perimeter(r.levels[6], true);
     CHECK(p6 < 5.6f);
     CHECK(p6 / p5 > 0.99f && p6 / p5 < 1.01f);
+
+    // Max edge length: 1.4 on the square, roughly halving per convergent
+    // level (the sup-norm indicator behind the convergence plot).
+    CHECK(near(maxEdgeLength(sq.pts, true), 1.4f));
+    CHECK(near(maxEdgeLength(sq.pts, false), 1.4f));
+    CHECK(maxEdgeLength(r.levels[6], true) < 0.05f);
 }
 
 static void testDivergenceGuard() {

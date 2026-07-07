@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <utility>
 #include <vector>
@@ -44,6 +45,21 @@ inline float perimeter(const std::vector<Vec2>& pts, bool closed) {
         length += std::sqrt(d.x * d.x + d.y * d.y);
     }
     return length;
+}
+
+// Longest single segment. This is the sup-norm convergence indicator: for a
+// scheme converging to a continuous curve it must tend to 0 with the level,
+// even in regimes where the perimeter stays bounded.
+inline float maxEdgeLength(const std::vector<Vec2>& pts, bool closed) {
+    if (pts.size() < 2)
+        return 0.0f;
+    float longest = 0.0f;
+    const size_t segments = closed ? pts.size() : pts.size() - 1;
+    for (size_t i = 0; i < segments; ++i) {
+        const Vec2 d = pts[(i + 1) % pts.size()] - pts[i];
+        longest = std::max(longest, std::sqrt(d.x * d.x + d.y * d.y));
+    }
+    return longest;
 }
 
 inline bool withinBounds(const std::vector<Vec2>& pts) {
