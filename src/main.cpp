@@ -1,7 +1,6 @@
 // Entry point: SDL2 window + Dear ImGui context and the main loop.
 // Renders Chaikin (left) and four-point (right) subdivision of a shared
-// preset polygon at a fixed iteration count, side by side; interactive
-// controls arrive in later phases.
+// control polygon side by side, with a live parameter panel.
 
 #include <SDL.h>
 #include <cstdio>
@@ -10,12 +9,9 @@
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
 
-#include "subdiv/chaikin.hpp"
-#include "subdiv/fourpoint.hpp"
-#include "subdiv/polygon.hpp"
-#include "subdiv/scheme.hpp"
-
+#include "app.hpp"
 #include "canvas.hpp"
+#include "ui.hpp"
 #include "viewport.hpp"
 
 int main(int, char**) {
@@ -49,10 +45,7 @@ int main(int, char**) {
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer2_Init(renderer);
 
-    const subdiv::Polygon polygon = subdiv::presets::star();
-    const subdiv::ChaikinScheme chaikin(0.25f);
-    const subdiv::FourPointScheme fourPoint(0.0625f);
-    const int iterations = 4;
+    AppState state;
 
     const SDL_Color kControlColor{140, 140, 150, 255};
     const SDL_Color kHandleColor{220, 220, 230, 255};
@@ -73,13 +66,9 @@ int main(int, char**) {
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Controls");
-        ImGui::TextUnformatted("Fixed parameters: t = 0.25, w = 1/16, 4 iterations.");
-        ImGui::TextUnformatted("Gray: shared control polygon.");
-        ImGui::TextUnformatted("Left/blue: Chaikin approximates (pulls inside).");
-        ImGui::TextUnformatted("Right/orange: four-point interpolates (passes through).");
-        ImGui::TextUnformatted("Sliders and editing arrive in later phases.");
-        ImGui::End();
+        state.recomputeIfDirty(); // panel reads stats from the caches
+        ui::drawPanel(state);
+        state.recomputeIfDirty(); // apply this frame's slider changes
 
         int outW = 0, outH = 0;
         SDL_GetRendererOutputSize(renderer, &outW, &outH);
@@ -102,19 +91,17 @@ int main(int, char**) {
         SDL_SetRenderDrawColor(renderer, 24, 26, 32, 255);
         SDL_RenderClear(renderer);
 
-        const subdiv::RefineResult chaikinResult = subdiv::refine(chaikin, polygon, iterations);
-        const subdiv::RefineResult fourPointResult = subdiv::refine(fourPoint, polygon, iterations);
-
         SDL_SetRenderDrawColor(renderer, kDividerColor.r, kDividerColor.g, kDividerColor.b, 255);
         SDL_RenderDrawLineF(renderer, w / 2.0f, 0.0f, w / 2.0f, h);
 
+        const subdiv::Polygon& polygon = state.polygon;
         canvas::drawPolyline(renderer, left, polygon.pts, polygon.closed, kControlColor);
         canvas::drawHandles(renderer, left, polygon.pts, kHandleColor);
-        canvas::drawPolyline(renderer, left, chaikinResult.levels.back(), polygon.closed, kChaikinColor);
+        canvas::drawPolyline(renderer, left, state.chaikinResult.levels.back(), polygon.closed, kChaikinColor);
 
         canvas::drawPolyline(renderer, right, polygon.pts, polygon.closed, kControlColor);
         canvas::drawHandles(renderer, right, polygon.pts, kHandleColor);
-        canvas::drawPolyline(renderer, right, fourPointResult.levels.back(), polygon.closed, kFourPointColor);
+        canvas::drawPolyline(renderer, right, state.fourPointResult.levels.back(), polygon.closed, kFourPointColor);
 
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
         SDL_RenderPresent(renderer);

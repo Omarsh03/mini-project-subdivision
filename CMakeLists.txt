@@ -26,7 +26,9 @@ target_link_libraries(imgui PUBLIC SDL2::SDL2)
 # --- Application ------------------------------------------------------------
 add_executable(subdivision_visualizer
     src/main.cpp
+    src/app.cpp
     src/canvas.cpp
+    src/ui.cpp
     src/viewport.cpp)
 target_include_directories(subdivision_visualizer PRIVATE include)
 target_compile_options(subdivision_visualizer PRIVATE -Wall -Wextra)
