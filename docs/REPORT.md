@@ -52,7 +52,7 @@ A later scope decision (documented in PRD/PLAN/TODO) added three more
 features, chosen for maximal reuse of the existing infrastructure:
 **live convergence plots** (M9, the ratio table of section 5 as a live
 instrument), **open-polyline mode** (N2), and **asymmetric Chaikin** (N3) —
-sections 5 and 6.4–6.5.
+sections 5, 6.3 and 6.4.
 
 ## 3. Architecture and design decisions
 
