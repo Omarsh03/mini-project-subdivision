@@ -253,6 +253,29 @@ static void testFourPoint() {
     CHECK(near(openOnce.back(), open.pts.back()));
 }
 
+// Degenerate control polygons (as producible by dragging vertices onto each
+// other): every scheme must stay finite — no division ever happens, only
+// affine combinations, so coincident and collinear points are harmless.
+static void testDegenerateInputs() {
+    const Polygon overlapping{{{0.1f, 0.1f}, {0.1f, 0.1f}, {0.5f, 0.5f}, {0.1f, 0.1f}}, true};
+    const Polygon collinear{{{-0.5f, 0.0f}, {0.0f, 0.0f}, {0.5f, 0.0f}, {0.7f, 0.0f}}, true};
+    const ChaikinScheme chaikin(0.25f);
+    const FourPointScheme fourPoint(0.0625f);
+
+    for (const Polygon* poly : {&overlapping, &collinear}) {
+        for (const SubdivisionScheme* scheme :
+             std::initializer_list<const SubdivisionScheme*>{&chaikin, &fourPoint}) {
+            const RefineResult r = refine(*scheme, *poly, 8);
+            CHECK(!r.diverged);
+            for (const auto& level : r.levels)
+                for (Vec2 v : level)
+                    CHECK(isFinite(v));
+            CHECK(perimeter(r.levels.back(), poly->closed) >= 0.0f);
+            CHECK(maxEdgeLength(r.levels.back(), poly->closed) >= 0.0f);
+        }
+    }
+}
+
 static size_t edgeCount(const TriMesh& m) {
     std::set<std::pair<int, int>> edges;
     for (const auto& t : m.tris)
@@ -306,6 +329,7 @@ int main() {
     testDivergenceGuard();
     testChaikin();
     testFourPoint();
+    testDegenerateInputs();
     testLoopSubdivision();
 
     if (g_failures == 0) {

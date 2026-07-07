@@ -52,6 +52,11 @@ Design rule: **`include/subdiv/` is pure math** — no SDL, no ImGui. Only
 `src/` touches the libraries. This keeps the core unit-testable and cleanly
 separated, and would let the 3D stretch goal reuse the same pattern.
 
+*As-built additions to this tree*: `src/input.{hpp,cpp}` (vertex dragging,
+split out during Phase 5), `include/subdiv/vec3.hpp` +
+`include/subdiv/trimesh.hpp` + `src/mesh_view.{hpp,cpp}` (3D bonus), and
+`.github/workflows/ci.yml` (CI). The final layout is in REPORT.md §3.
+
 ## 3. Data structures
 
 ```cpp

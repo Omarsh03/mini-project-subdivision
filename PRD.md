@@ -69,8 +69,9 @@ not forgotten:
   (edge hit-testing, input precedence) for modest grading payoff.
 - **N5 (overlay mode)**: the side-by-side view plus shared editing already
   makes the comparison; an overlay adds a mode, not an insight.
-- **CI (GitHub Actions build + ctest)**: pure professionalism signal with no
-  pedagogical content; revisit only if time is truly spare.
+- **CI (GitHub Actions build + ctest)**: initially deferred as a pure
+  professionalism signal; *added during the pre-submission audit* — the
+  workflow builds and runs the test suite on every push.
 - **Exact limit-curve overlay (quadratic B-spline for Chaikin)**: new math
   and rendering — violates the "reuse existing infrastructure" constraint;
   the ghosted convergence view already tells this story.
