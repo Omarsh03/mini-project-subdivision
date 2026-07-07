@@ -52,6 +52,23 @@ inline Polygon zigzag(int teeth = 6) {
     return p;
 }
 
+// Open circular arc — the open-polyline showcase: both schemes must keep
+// its endpoints fixed while smoothing the interior.
+inline Polygon arc(int n = 7, float radius = 0.8f) {
+    Polygon p;
+    p.closed = false;
+    p.pts.reserve(static_cast<size_t>(n));
+    // 216-degree sweep over the top, endpoints hanging below the x-axis.
+    const float start = 1.1f * kPi;
+    const float end = -0.1f * kPi;
+    for (int i = 0; i < n; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(n - 1);
+        const float angle = start + t * (end - start);
+        p.pts.push_back({radius * std::cos(angle), radius * std::sin(angle)});
+    }
+    return p;
+}
+
 // Star-shaped random polygon: evenly spaced angles with jittered radii, so
 // the outline never self-intersects. Seeded for reproducibility.
 inline Polygon random(int n = 10, std::uint32_t seed = 1) {

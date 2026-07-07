@@ -89,6 +89,14 @@ static void testPresets() {
     CHECK(zz.pts.size() == 2 * 6 + 1 + 2);
     CHECK(zz.closed);
 
+    // Arc preset: open, endpoints below the x-axis, all points on the circle.
+    const Polygon a = presets::arc(7, 0.8f);
+    CHECK(a.pts.size() == 7);
+    CHECK(!a.closed);
+    CHECK(a.pts.front().y < 0.0f && a.pts.back().y < 0.0f);
+    for (Vec2 v : a.pts)
+        CHECK(near(std::sqrt(v.x * v.x + v.y * v.y), 0.8f));
+
     // Random preset is deterministic per seed.
     const Polygon r1 = presets::random(10, 42);
     const Polygon r2 = presets::random(10, 42);

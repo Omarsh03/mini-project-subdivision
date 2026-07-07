@@ -66,6 +66,8 @@ CliOptions parseArgs(int argc, char** argv, AppState& state) {
                 state.polygon = subdiv::presets::zigzag();
             else if (std::strcmp(value, "random") == 0)
                 state.polygon = subdiv::presets::random();
+            else if (std::strcmp(value, "arc") == 0)
+                state.polygon = subdiv::presets::arc();
             else
                 opts.valid = false;
             ++i;
@@ -75,7 +77,7 @@ CliOptions parseArgs(int argc, char** argv, AppState& state) {
         if (!opts.valid) {
             std::fprintf(stderr,
                          "usage: subdivision_visualizer [--screenshot out.bmp] "
-                         "[--preset square|star|zigzag|random] [--iterations n] "
+                         "[--preset square|star|zigzag|random|arc] [--iterations n] "
                          "[--chaikin-t x] [--fourpoint-w x] "
                          "[--mode 2d|3d] [--loop-iterations n]\n");
             break;

@@ -136,6 +136,13 @@ void drawPanel(AppState& state) {
         state.polygon = subdiv::presets::random(10, state.nextRandomSeed++);
         state.dirty = true;
     }
+    ImGui::SameLine();
+    if (ImGui::Button("Arc")) {
+        state.polygon = subdiv::presets::arc();
+        state.dirty = true;
+    }
+    if (ImGui::Checkbox("closed polygon", &state.polygon.closed))
+        state.dirty = true;
     ImGui::TextDisabled("drag vertices with the mouse (in either viewport)");
 
     ImGui::SeparatorText("Display");
