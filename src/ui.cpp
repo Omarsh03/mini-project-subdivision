@@ -101,11 +101,30 @@ void drawPanel(AppState& state) {
         state.dirty = true;
 
     ImGui::SeparatorText("Chaikin (approximating)");
-    if (weightControl("cut ratio t", &state.chaikin.t, 0.01f, 0.99f,
-                      canonical::kChaikinRatio,
-                      "canonical t = 0.25 (the 1/4 : 3/4 rule); "
-                      "t = 0.5 degenerates, t > 0.5 cuts cross over"))
-        state.dirty = true;
+    if (ImGui::Checkbox("link cuts (symmetric)", &state.linkChaikinCuts)) {
+        if (state.linkChaikinCuts && state.chaikin.t2 != state.chaikin.t1) {
+            state.chaikin.t2 = state.chaikin.t1;
+            state.dirty = true;
+        }
+    }
+    if (state.linkChaikinCuts) {
+        if (weightControl("cut ratio t", &state.chaikin.t1, 0.01f, 0.99f,
+                          canonical::kChaikinRatio,
+                          "canonical t = 0.25 (the 1/4 : 3/4 rule); "
+                          "t = 0.5 degenerates, t > 0.5 cuts cross over")) {
+            state.chaikin.t2 = state.chaikin.t1;
+            state.dirty = true;
+        }
+    } else {
+        if (weightControl("cut t1 (from A)", &state.chaikin.t1, 0.01f, 0.99f,
+                          canonical::kChaikinRatio,
+                          "unequal cuts keep affine invariance but break "
+                          "the mask's symmetry"))
+            state.dirty = true;
+        if (weightControl("cut t2 (from B)", &state.chaikin.t2, 0.01f, 0.99f,
+                          canonical::kChaikinRatio, ""))
+            state.dirty = true;
+    }
     schemeStats(state.chaikinResult, state.iterations, state.polygon.closed);
 
     ImGui::SeparatorText("Four-point (interpolating)");

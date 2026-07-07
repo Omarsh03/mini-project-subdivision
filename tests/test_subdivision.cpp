@@ -196,6 +196,23 @@ static void testChaikin() {
     CHECK(openOnce.size() == 8); // 2 endpoints + 2 cuts on each of 3 edges
     CHECK(near(openOnce.front(), open.pts.front()));
     CHECK(near(openOnce.back(), open.pts.back()));
+
+    // Asymmetric cuts, hand-computed on the bottom edge (-.7,-.7)->(.7,-.7):
+    // t1 = 0.25 from A -> x = -0.35; t2 = 0.4 from B -> x = -0.7 + 0.6*1.4 = 0.14.
+    const ChaikinScheme asym(0.25f, 0.4f);
+    const std::vector<Vec2> asymOnce = asym.step(sq.pts, sq.closed);
+    CHECK(asymOnce.size() == 8);
+    CHECK(near(asymOnce[0], Vec2{-0.35f, -0.7f}));
+    CHECK(near(asymOnce[1], Vec2{0.14f, -0.7f}));
+
+    // Equal cuts reproduce the symmetric scheme exactly.
+    const ChaikinScheme linked(0.3f, 0.3f);
+    const ChaikinScheme symmetric(0.3f);
+    const std::vector<Vec2> viaPair = linked.step(sq.pts, sq.closed);
+    const std::vector<Vec2> viaSingle = symmetric.step(sq.pts, sq.closed);
+    CHECK(viaPair.size() == viaSingle.size());
+    for (size_t i = 0; i < viaPair.size(); ++i)
+        CHECK(near(viaPair[i], viaSingle[i]));
 }
 
 static void testFourPoint() {

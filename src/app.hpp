@@ -35,6 +35,9 @@ struct AppState {
     int iterations = 4;
     DisplayOptions display;
 
+    // Symmetric Chaikin (t1 == t2) by default; unlinking exposes both cuts.
+    bool linkChaikinCuts = true;
+
     // 3D bonus: Loop subdivision of a cube, shown in a separate view mode.
     ViewMode mode = ViewMode::Curves2D;
     int loopIterations = 2;

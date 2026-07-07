@@ -41,7 +41,12 @@ CliOptions parseArgs(int argc, char** argv, AppState& state) {
             state.iterations = std::atoi(value);
             ++i;
         } else if (std::strcmp(arg, "--chaikin-t") == 0 && value) {
-            state.chaikin.t = std::strtof(value, nullptr);
+            state.chaikin.t1 = std::strtof(value, nullptr);
+            state.chaikin.t2 = state.chaikin.t1;
+            ++i;
+        } else if (std::strcmp(arg, "--chaikin-t2") == 0 && value) {
+            state.chaikin.t2 = std::strtof(value, nullptr);
+            state.linkChaikinCuts = false; // keep the panel from re-linking
             ++i;
         } else if (std::strcmp(arg, "--fourpoint-w") == 0 && value) {
             state.fourPoint.w = std::strtof(value, nullptr);
@@ -78,7 +83,7 @@ CliOptions parseArgs(int argc, char** argv, AppState& state) {
             std::fprintf(stderr,
                          "usage: subdivision_visualizer [--screenshot out.bmp] "
                          "[--preset square|star|zigzag|random|arc] [--iterations n] "
-                         "[--chaikin-t x] [--fourpoint-w x] "
+                         "[--chaikin-t x] [--chaikin-t2 x] [--fourpoint-w x] "
                          "[--mode 2d|3d] [--loop-iterations n]\n");
             break;
         }
