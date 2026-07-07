@@ -1,14 +1,18 @@
 // Assert-based unit tests for the subdivision math core (include/subdiv/).
 // Runs via CTest; exits non-zero on any failure.
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <set>
+#include <utility>
 #include <vector>
 
 #include "subdiv/chaikin.hpp"
 #include "subdiv/fourpoint.hpp"
 #include "subdiv/polygon.hpp"
 #include "subdiv/scheme.hpp"
+#include "subdiv/trimesh.hpp"
 #include "subdiv/vec2.hpp"
 
 using namespace subdiv;
@@ -218,6 +222,51 @@ static void testFourPoint() {
     CHECK(near(openOnce.back(), open.pts.back()));
 }
 
+static size_t edgeCount(const TriMesh& m) {
+    std::set<std::pair<int, int>> edges;
+    for (const auto& t : m.tris)
+        for (int e = 0; e < 3; ++e)
+            edges.insert(std::minmax(t[e], t[(e + 1) % 3]));
+    return edges.size();
+}
+
+static void testLoopSubdivision() {
+    const TriMesh base = subdiv::cube(0.7f);
+    CHECK(base.verts.size() == 8);
+    CHECK(base.tris.size() == 12);
+    CHECK(edgeCount(base) == 18); // 12 cube edges + 6 face diagonals
+    CHECK(8 - 18 + 12 == 2);      // Euler characteristic of a sphere
+
+    // One round: V' = V + E, F' = 4F, E' = 2E + 3F; Euler must hold.
+    const TriMesh once = loopSubdivide(base);
+    CHECK(once.verts.size() == 26);
+    CHECK(once.tris.size() == 48);
+    CHECK(edgeCount(once) == 72);
+    CHECK(26 - 72 + 48 == 2);
+
+    const TriMesh twice = loopSubdivide(once);
+    CHECK(twice.verts.size() == 98); // 26 + 72
+    CHECK(twice.tris.size() == 192);
+    CHECK(static_cast<long>(twice.verts.size()) - static_cast<long>(edgeCount(twice)) +
+              static_cast<long>(twice.tris.size()) == 2);
+
+    // Loop is approximating: nothing may leave the cube. After one round the
+    // face-interior edge points still lie exactly on the (flat) face planes,
+    // so the maximum only becomes strictly interior from the second round on.
+    const auto maxAbsCoord = [](const TriMesh& m) {
+        float maxAbs = 0.0f;
+        for (Vec3 v : m.verts)
+            maxAbs = std::max({maxAbs, std::fabs(v.x), std::fabs(v.y), std::fabs(v.z)});
+        return maxAbs;
+    };
+    bool allFinite = true;
+    for (Vec3 v : twice.verts)
+        allFinite = allFinite && subdiv::isFinite(v);
+    CHECK(allFinite);
+    CHECK(maxAbsCoord(once) <= 0.7f + 1e-6f);
+    CHECK(maxAbsCoord(twice) < 0.7f);
+}
+
 int main() {
     testVec2();
     testPresets();
@@ -226,6 +275,7 @@ int main() {
     testDivergenceGuard();
     testChaikin();
     testFourPoint();
+    testLoopSubdivision();
 
     if (g_failures == 0) {
         std::printf("All tests passed.\n");

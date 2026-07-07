@@ -4,6 +4,7 @@
 #include "subdiv/fourpoint.hpp"
 #include "subdiv/polygon.hpp"
 #include "subdiv/scheme.hpp"
+#include "subdiv/trimesh.hpp"
 
 // Canonical parameter values, shared by the UI (markers, reset buttons)
 // and the initial state.
@@ -13,6 +14,8 @@ inline constexpr float kFourPointTension = 0.0625f; // 1/16, cubic precision
 // The four-point scheme's limit curve is C^1 only for 0 < w < (sqrt(5)-1)/8.
 inline constexpr float kFourPointC1Bound = 0.1545085f;
 } // namespace canonical
+
+enum class ViewMode { Curves2D, Loop3D };
 
 // Render-only options; these never invalidate the refinement caches.
 struct DisplayOptions {
@@ -31,6 +34,11 @@ struct AppState {
     subdiv::FourPointScheme fourPoint{canonical::kFourPointTension};
     int iterations = 4;
     DisplayOptions display;
+
+    // 3D bonus: Loop subdivision of a cube, shown in a separate view mode.
+    ViewMode mode = ViewMode::Curves2D;
+    int loopIterations = 2;
+    subdiv::TriMesh loopMesh;
 
     // Vertex-drag state: index into polygon.pts, and which viewport
     // (0 = left, 1 = right) the drag started in — its transform maps the

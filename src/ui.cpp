@@ -55,6 +55,26 @@ void drawPanel(AppState& state) {
     ImGui::SetNextWindowSize(ImVec2(380, 0), ImGuiCond_FirstUseEver);
     ImGui::Begin("Controls");
 
+    if (ImGui::RadioButton("2D curves", state.mode == ViewMode::Curves2D))
+        state.mode = ViewMode::Curves2D;
+    ImGui::SameLine();
+    if (ImGui::RadioButton("3D Loop (bonus)", state.mode == ViewMode::Loop3D))
+        state.mode = ViewMode::Loop3D;
+
+    if (state.mode == ViewMode::Loop3D) {
+        ImGui::SeparatorText("Loop subdivision of a cube");
+        if (ImGui::SliderInt("Loop iterations", &state.loopIterations, 0, 5))
+            state.dirty = true;
+        ImGui::Text("vertices: %zu, triangles: %zu",
+                    state.loopMesh.verts.size(), state.loopMesh.tris.size());
+        ImGui::TextDisabled("approximating: the cube rounds toward a smooth blob;\n"
+                            "corners are extraordinary vertices (valence != 6),\n"
+                            "handled by the standard valence-dependent weights");
+        ImGui::Checkbox("show base cube", &state.display.showControlPolygon);
+        ImGui::End();
+        return;
+    }
+
     if (ImGui::SliderInt("iterations", &state.iterations, 0, 8))
         state.dirty = true;
 

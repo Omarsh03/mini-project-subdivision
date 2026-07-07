@@ -18,6 +18,7 @@
 #include "app.hpp"
 #include "canvas.hpp"
 #include "input.hpp"
+#include "mesh_view.hpp"
 #include "ui.hpp"
 #include "viewport.hpp"
 
@@ -45,6 +46,17 @@ CliOptions parseArgs(int argc, char** argv, AppState& state) {
         } else if (std::strcmp(arg, "--fourpoint-w") == 0 && value) {
             state.fourPoint.w = std::strtof(value, nullptr);
             ++i;
+        } else if (std::strcmp(arg, "--mode") == 0 && value) {
+            if (std::strcmp(value, "2d") == 0)
+                state.mode = ViewMode::Curves2D;
+            else if (std::strcmp(value, "3d") == 0)
+                state.mode = ViewMode::Loop3D;
+            else
+                opts.valid = false;
+            ++i;
+        } else if (std::strcmp(arg, "--loop-iterations") == 0 && value) {
+            state.loopIterations = std::atoi(value);
+            ++i;
         } else if (std::strcmp(arg, "--preset") == 0 && value) {
             if (std::strcmp(value, "square") == 0)
                 state.polygon = subdiv::presets::square();
@@ -64,7 +76,8 @@ CliOptions parseArgs(int argc, char** argv, AppState& state) {
             std::fprintf(stderr,
                          "usage: subdivision_visualizer [--screenshot out.bmp] "
                          "[--preset square|star|zigzag|random] [--iterations n] "
-                         "[--chaikin-t x] [--fourpoint-w x]\n");
+                         "[--chaikin-t x] [--fourpoint-w x] "
+                         "[--mode 2d|3d] [--loop-iterations n]\n");
             break;
         }
     }
@@ -133,6 +146,7 @@ int main(int argc, char** argv) {
     const SDL_Color kChaikinColor{86, 156, 255, 255};
     const SDL_Color kFourPointColor{255, 170, 66, 255};
     const SDL_Color kDividerColor{70, 74, 84, 255};
+    const SDL_Color kMeshColor{110, 220, 170, 255};
 
     // Viewports persist across frames so event handling can hit-test against
     // last frame's layout (at worst one frame stale after a resize).
@@ -141,6 +155,8 @@ int main(int argc, char** argv) {
     bool running = true;
     int frame = 0;
     int exitCode = 0;
+    // Fixed angle in screenshot mode keeps figures reproducible.
+    float meshAngle = 0.6f;
     while (running) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -150,7 +166,8 @@ int main(int argc, char** argv) {
             const bool isMouse = event.type == SDL_MOUSEBUTTONDOWN ||
                                  event.type == SDL_MOUSEBUTTONUP ||
                                  event.type == SDL_MOUSEMOTION;
-            if (isMouse && !ImGui::GetIO().WantCaptureMouse)
+            if (isMouse && !ImGui::GetIO().WantCaptureMouse &&
+                state.mode == ViewMode::Curves2D)
                 input::handleEvent(state, event, left, right);
         }
 
@@ -168,47 +185,67 @@ int main(int argc, char** argv) {
 
         left.screen = {0.0f, 0.0f, w / 2.0f, h};
         right.screen = {w / 2.0f, 0.0f, w / 2.0f, h};
+        Viewport full;
+        full.screen = {0.0f, 0.0f, w, h};
 
         // Viewport labels, drawn behind ImGui windows but over the canvas.
         ImDrawList* bg = ImGui::GetBackgroundDrawList();
-        bg->AddText(ImVec2(left.screen.x + 12.0f, 10.0f),
-                    IM_COL32(kChaikinColor.r, kChaikinColor.g, kChaikinColor.b, 255),
-                    "Chaikin (approximating)");
-        bg->AddText(ImVec2(right.screen.x + 12.0f, 10.0f),
-                    IM_COL32(kFourPointColor.r, kFourPointColor.g, kFourPointColor.b, 255),
-                    "Four-point (interpolating)");
+        if (state.mode == ViewMode::Curves2D) {
+            bg->AddText(ImVec2(left.screen.x + 12.0f, 10.0f),
+                        IM_COL32(kChaikinColor.r, kChaikinColor.g, kChaikinColor.b, 255),
+                        "Chaikin (approximating)");
+            bg->AddText(ImVec2(right.screen.x + 12.0f, 10.0f),
+                        IM_COL32(kFourPointColor.r, kFourPointColor.g, kFourPointColor.b, 255),
+                        "Four-point (interpolating)");
+        } else {
+            bg->AddText(ImVec2(12.0f, 10.0f),
+                        IM_COL32(kMeshColor.r, kMeshColor.g, kMeshColor.b, 255),
+                        "Loop subdivision on a cube (3D bonus)");
+        }
 
         ImGui::Render();
         SDL_SetRenderDrawColor(renderer, 24, 26, 32, 255);
         SDL_RenderClear(renderer);
 
-        SDL_SetRenderDrawColor(renderer, kDividerColor.r, kDividerColor.g, kDividerColor.b, 255);
-        SDL_RenderDrawLineF(renderer, w / 2.0f, 0.0f, w / 2.0f, h);
+        if (state.mode == ViewMode::Curves2D) {
+            SDL_SetRenderDrawColor(renderer, kDividerColor.r, kDividerColor.g, kDividerColor.b, 255);
+            SDL_RenderDrawLineF(renderer, w / 2.0f, 0.0f, w / 2.0f, h);
 
-        // One scheme view per viewport: control polygon, ghosted intermediate
-        // levels fading in toward the finest curve, then handles on top.
-        const auto drawSchemeView = [&](const Viewport& vp,
-                                        const subdiv::RefineResult& result,
-                                        SDL_Color color) {
-            const subdiv::Polygon& polygon = state.polygon;
-            if (state.display.showControlPolygon)
-                canvas::drawPolyline(renderer, vp, polygon.pts, polygon.closed, kControlColor);
-            const size_t last = result.levels.size() - 1;
-            if (state.display.showIntermediateLevels && last > 1) {
-                for (size_t k = 1; k < last; ++k) {
-                    SDL_Color ghost = color;
-                    ghost.a = static_cast<Uint8>(
-                        40.0f + 120.0f * static_cast<float>(k) / static_cast<float>(last));
-                    canvas::drawPolyline(renderer, vp, result.levels[k], polygon.closed, ghost);
+            // One scheme view per viewport: control polygon, ghosted
+            // intermediate levels fading in toward the finest curve, then
+            // handles on top.
+            const auto drawSchemeView = [&](const Viewport& vp,
+                                            const subdiv::RefineResult& result,
+                                            SDL_Color color) {
+                const subdiv::Polygon& polygon = state.polygon;
+                if (state.display.showControlPolygon)
+                    canvas::drawPolyline(renderer, vp, polygon.pts, polygon.closed, kControlColor);
+                const size_t last = result.levels.size() - 1;
+                if (state.display.showIntermediateLevels && last > 1) {
+                    for (size_t k = 1; k < last; ++k) {
+                        SDL_Color ghost = color;
+                        ghost.a = static_cast<Uint8>(
+                            40.0f + 120.0f * static_cast<float>(k) / static_cast<float>(last));
+                        canvas::drawPolyline(renderer, vp, result.levels[k], polygon.closed, ghost);
+                    }
                 }
-            }
-            canvas::drawPolyline(renderer, vp, result.levels.back(), polygon.closed, color);
-            if (state.display.showHandles)
-                canvas::drawHandles(renderer, vp, polygon.pts, kHandleColor);
-        };
+                canvas::drawPolyline(renderer, vp, result.levels.back(), polygon.closed, color);
+                if (state.display.showHandles)
+                    canvas::drawHandles(renderer, vp, polygon.pts, kHandleColor);
+            };
 
-        drawSchemeView(left, state.chaikinResult, kChaikinColor);
-        drawSchemeView(right, state.fourPointResult, kFourPointColor);
+            drawSchemeView(left, state.chaikinResult, kChaikinColor);
+            drawSchemeView(right, state.fourPointResult, kFourPointColor);
+        } else {
+            if (!cli.screenshotPath)
+                meshAngle += 0.008f; // slow turntable, ~0.5 rad/s at 60 fps
+            if (state.display.showControlPolygon && state.loopIterations > 0) {
+                SDL_Color ghost = kControlColor;
+                ghost.a = 90;
+                meshview::draw(renderer, full, subdiv::cube(), meshAngle, ghost);
+            }
+            meshview::draw(renderer, full, state.loopMesh, meshAngle, kMeshColor);
+        }
 
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
 
