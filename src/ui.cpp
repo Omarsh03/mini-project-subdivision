@@ -68,7 +68,7 @@ void drawPanel(AppState& state) {
         ImGui::Text("vertices: %zu, triangles: %zu",
                     state.loopMesh.verts.size(), state.loopMesh.tris.size());
         ImGui::TextDisabled("approximating: the cube rounds toward a smooth blob;\n"
-                            "corners are extraordinary vertices (valence != 6),\n"
+                            "six of eight corners are extraordinary (valence 4),\n"
                             "handled by the standard valence-dependent weights");
         ImGui::Checkbox("show base cube", &state.display.showControlPolygon);
         ImGui::End();

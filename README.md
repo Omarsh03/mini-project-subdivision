@@ -24,6 +24,8 @@ experiments: **[docs/REPORT.md](docs/REPORT.md)**.
   statistics flag when refinement stops converging (rough/fractal regime),
   plus a hard guard against numeric blow-up
 - Draggable control vertices, shape presets (square, star, zig-zag, random)
+- **3D bonus**: Loop subdivision of a cube as a rotating, depth-cued
+  wireframe (switchable mode, 0–5 rounds)
 - Reproducible screenshot mode for documentation
 
 ## Prerequisites (Ubuntu / WSL2)
@@ -63,6 +65,7 @@ measurement, and the divergence guard.
 
 | Control | Effect |
 |---|---|
+| **2D curves / 3D Loop** | Switch between the curve comparison and the 3D bonus view |
 | **iterations** slider | Number of subdivision rounds (0–8), applied to both schemes |
 | **cut ratio t** slider | Chaikin cut parameter; `reset` returns to the canonical 0.25 |
 | **tension w** slider | Four-point tension; `reset` returns to the canonical 0.0625 |
@@ -70,6 +73,7 @@ measurement, and the divergence guard.
 | **control polygon / handles** | Toggle drawing of the input polygon and its vertex markers |
 | **intermediate levels** | Ghosted earlier levels showing convergence toward the limit curve |
 | **Left-drag a vertex** | Move a control point (works in either viewport; both update) |
+| **Loop iterations** (3D mode) | Rounds of Loop subdivision on the cube (0–5); the base cube shows as a ghost |
 
 Per scheme, the panel reports levels computed, point count, and the finest
 level's perimeter with its per-level growth ratio. An orange warning appears
@@ -87,7 +91,7 @@ every image in the report reproducibly:
 ```
 
 Flags: `--preset square|star|zigzag|random`, `--iterations n`,
-`--chaikin-t x`, `--fourpoint-w x`.
+`--chaikin-t x`, `--fourpoint-w x`, `--mode 2d|3d`, `--loop-iterations n`.
 
 ## Repository layout
 

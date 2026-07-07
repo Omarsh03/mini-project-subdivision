@@ -88,8 +88,8 @@ Only if time remains, in this order (each independently committable):
       — ☑ commit + push "Add asymmetric Chaikin cuts"
 - [ ] N2: open-polyline mode with endpoint handling
       — ☑ commit + push "Support open polylines"
-- [ ] S1: 3D bonus — Loop subdivision on a cube, wireframe render
+- [x] S1: 3D bonus — Loop subdivision on a cube, wireframe render
       (separate viewport or mode; no extraordinary-vertex correctness needed)
       — ☑ commit + push "Add Loop subdivision 3D bonus"
-- [ ] Update README/REPORT for whichever extras landed
+- [x] Update README/REPORT for whichever extras landed
       — ☑ commit + push "Document optional features"
