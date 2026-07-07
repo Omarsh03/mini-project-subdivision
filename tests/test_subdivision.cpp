@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <vector>
 
+#include "subdiv/chaikin.hpp"
 #include "subdiv/polygon.hpp"
 #include "subdiv/scheme.hpp"
 #include "subdiv/vec2.hpp"
@@ -129,11 +130,46 @@ static void testDivergenceGuard() {
         CHECK(withinBounds(level)); // every retained level is safe to render
 }
 
+static void testChaikin() {
+    const Polygon sq = presets::square(); // (-.7,-.7) (.7,-.7) (.7,.7) (-.7,.7)
+    const ChaikinScheme chaikin(0.25f);
+
+    // Hand-computed step at the canonical ratio: the first edge
+    // (-.7,-.7)->(.7,-.7) must yield cuts at x = -0.35 and x = 0.35.
+    const std::vector<Vec2> once = chaikin.step(sq.pts, sq.closed);
+    CHECK(once.size() == 8); // point count doubles for closed polygons
+    CHECK(near(once[0], Vec2{-0.35f, -0.7f}));
+    CHECK(near(once[1], Vec2{0.35f, -0.7f}));
+    CHECK(near(once[2], Vec2{0.7f, -0.35f}));
+    CHECK(near(once[3], Vec2{0.7f, 0.35f}));
+
+    // Point count doubles per level across an iterated refinement.
+    const RefineResult r = refine(chaikin, sq, 3);
+    CHECK(!r.diverged);
+    CHECK(r.levels[1].size() == 8);
+    CHECK(r.levels[2].size() == 16);
+    CHECK(r.levels[3].size() == 32);
+
+    // t = 1/2: both cuts collapse to the edge midpoint (degenerate pairs).
+    const ChaikinScheme half(0.5f);
+    const std::vector<Vec2> mid = half.step(sq.pts, sq.closed);
+    CHECK(near(mid[0], mid[1]));
+
+    // Open polylines keep their endpoints untouched.
+    Polygon open = presets::square();
+    open.closed = false;
+    const std::vector<Vec2> openOnce = chaikin.step(open.pts, open.closed);
+    CHECK(openOnce.size() == 8); // 2 endpoints + 2 cuts on each of 3 edges
+    CHECK(near(openOnce.front(), open.pts.front()));
+    CHECK(near(openOnce.back(), open.pts.back()));
+}
+
 int main() {
     testVec2();
     testPresets();
     testRefine();
     testDivergenceGuard();
+    testChaikin();
 
     if (g_failures == 0) {
         std::printf("All tests passed.\n");

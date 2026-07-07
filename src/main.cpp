@@ -1,6 +1,6 @@
 // Entry point: SDL2 window + Dear ImGui context and the main loop.
-// Phase 0 skeleton — proves the SDL2/ImGui/WSLg stack works end to end;
-// the subdivision canvas and controls arrive in later phases.
+// Currently renders Chaikin subdivision of a preset polygon at a fixed
+// iteration count; interactive controls arrive in later phases.
 
 #include <SDL.h>
 #include <cstdio>
@@ -8,6 +8,13 @@
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
+
+#include "subdiv/chaikin.hpp"
+#include "subdiv/polygon.hpp"
+#include "subdiv/scheme.hpp"
+
+#include "canvas.hpp"
+#include "viewport.hpp"
 
 int main(int, char**) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
@@ -40,6 +47,14 @@ int main(int, char**) {
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer2_Init(renderer);
 
+    const subdiv::Polygon polygon = subdiv::presets::square();
+    const subdiv::ChaikinScheme chaikin(0.25f);
+    const int iterations = 4;
+
+    const SDL_Color kControlColor{140, 140, 150, 255};
+    const SDL_Color kHandleColor{220, 220, 230, 255};
+    const SDL_Color kChaikinColor{86, 156, 255, 255};
+
     bool running = true;
     while (running) {
         SDL_Event event;
@@ -54,13 +69,25 @@ int main(int, char**) {
         ImGui::NewFrame();
 
         ImGui::Begin("Controls");
-        ImGui::TextUnformatted("Phase 0 skeleton — SDL2 + Dear ImGui running.");
-        ImGui::TextUnformatted("Subdivision canvas and controls arrive in later phases.");
+        ImGui::TextUnformatted("Chaikin corner cutting (t = 0.25, 4 iterations)");
+        ImGui::TextUnformatted("Gray: control polygon.  Blue: subdivided curve.");
+        ImGui::TextUnformatted("Sliders and side-by-side view arrive in later phases.");
         ImGui::End();
 
         ImGui::Render();
         SDL_SetRenderDrawColor(renderer, 24, 26, 32, 255);
         SDL_RenderClear(renderer);
+
+        int outW = 0, outH = 0;
+        SDL_GetRendererOutputSize(renderer, &outW, &outH);
+        Viewport vp;
+        vp.screen = {0.0f, 0.0f, static_cast<float>(outW), static_cast<float>(outH)};
+
+        const subdiv::RefineResult result = subdiv::refine(chaikin, polygon, iterations);
+        canvas::drawPolyline(renderer, vp, polygon.pts, polygon.closed, kControlColor);
+        canvas::drawHandles(renderer, vp, polygon.pts, kHandleColor);
+        canvas::drawPolyline(renderer, vp, result.levels.back(), polygon.closed, kChaikinColor);
+
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
         SDL_RenderPresent(renderer);
     }
