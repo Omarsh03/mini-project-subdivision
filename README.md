@@ -23,7 +23,15 @@ experiments: **[docs/REPORT.md](docs/REPORT.md)**.
 - Weight sliders reach far beyond the canonical values; live perimeter
   statistics flag when refinement stops converging (rough/fractal regime),
   plus a hard guard against numeric blow-up
-- Draggable control vertices, shape presets (square, star, zig-zag, random)
+- **Live convergence plots** per scheme: perimeter and max edge length per
+  level, flipping visibly from decaying-to-flat to growing as weights leave
+  the convergent regime
+- **Open-polyline mode** with an arc preset — endpoints stay fixed while the
+  interior smooths
+- **Asymmetric Chaikin**: unlink the cut sliders to give the two cuts
+  independent depths t₁/t₂
+- Draggable control vertices, shape presets (square, star, zig-zag, random,
+  arc)
 - **3D bonus**: Loop subdivision of a cube as a rotating, depth-cued
   wireframe (switchable mode, 0–5 rounds)
 - Reproducible screenshot mode for documentation
@@ -68,17 +76,20 @@ measurement, and the divergence guard.
 | **2D curves / 3D Loop** | Switch between the curve comparison and the 3D bonus view |
 | **iterations** slider | Number of subdivision rounds (0–8), applied to both schemes |
 | **cut ratio t** slider | Chaikin cut parameter; `reset` returns to the canonical 0.25 |
+| **link cuts (symmetric)** | Unlink to control the two Chaikin cuts t₁ (from A) and t₂ (from B) independently |
 | **tension w** slider | Four-point tension; `reset` returns to the canonical 0.0625 |
-| **Square / Star / Zig-zag / Random** | Load a preset control polygon (Random differs each click) |
+| **Square / Star / Zig-zag / Random / Arc** | Load a preset control polygon (Random differs each click; Arc is open) |
+| **closed polygon** | Toggle between a closed polygon and an open polyline with fixed endpoints |
 | **control polygon / handles** | Toggle drawing of the input polygon and its vertex markers |
 | **intermediate levels** | Ghosted earlier levels showing convergence toward the limit curve |
 | **Left-drag a vertex** | Move a control point (works in either viewport; both update) |
 | **Loop iterations** (3D mode) | Rounds of Loop subdivision on the cube (0–5); the base cube shows as a ghost |
 
-Per scheme, the panel reports levels computed, point count, and the finest
-level's perimeter with its per-level growth ratio. An orange warning appears
-when the perimeter keeps growing (the scheme is no longer converging); a red
-one if coordinates overflow the safety bound entirely.
+Per scheme, the panel reports levels computed, point count, live plots of
+perimeter and max edge length across all levels, and the finest level's
+perimeter with its per-level growth ratio. An orange warning appears when
+the perimeter keeps growing (the scheme is no longer converging); a red one
+if coordinates overflow the safety bound entirely.
 
 ## Screenshot mode
 
@@ -90,8 +101,9 @@ every image in the report reproducibly:
     --preset star --iterations 6 --fourpoint-w 0.30
 ```
 
-Flags: `--preset square|star|zigzag|random`, `--iterations n`,
-`--chaikin-t x`, `--fourpoint-w x`, `--mode 2d|3d`, `--loop-iterations n`.
+Flags: `--preset square|star|zigzag|random|arc`, `--iterations n`,
+`--chaikin-t x`, `--chaikin-t2 x`, `--fourpoint-w x`, `--mode 2d|3d`,
+`--loop-iterations n`.
 
 ## Repository layout
 

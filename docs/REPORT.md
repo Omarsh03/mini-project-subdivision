@@ -48,6 +48,12 @@ The optional **3D bonus (S1)** was also completed after the 2D core:
 Loop subdivision applied to a cube, shown as a rotating wireframe
 (section 7).
 
+A later scope decision (documented in PRD/PLAN/TODO) added three more
+features, chosen for maximal reuse of the existing infrastructure:
+**live convergence plots** (M9, the ratio table of section 5 as a live
+instrument), **open-polyline mode** (N2), and **asymmetric Chaikin** (N3) —
+sections 5 and 6.4–6.5.
+
 ## 3. Architecture and design decisions
 
 ```
@@ -158,7 +164,16 @@ level):
 
 The separation is sharp: everything convergent settles below 1.006, every
 rough/fractal setting sustains ≥ 1.05. The app therefore shows the live
-perimeter ratio per scheme and warns (orange) above a threshold of 1.02. The
+perimeter ratio per scheme and warns (orange) above a threshold of 1.02.
+This table also exists in the app as a **live instrument**: each scheme's
+panel section plots perimeter and max edge length across all levels
+(`ImGui::PlotLines` over the already-retained data). Dragging a weight
+slider makes the character flip visibly — perimeter flattening toward the
+limit arc length in convergent regimes versus growing geometrically in
+fractal ones, while max edge length (the sup-norm indicator, which *must*
+tend to 0 for convergence to a curve) keeps shrinking even in Koch-like
+regimes: roughness accumulating at ever-smaller scales is precisely what
+"fractal" means here. The
 hard coordinate guard was kept as a second line of defense — it is the one
 that protects the renderer from NaN/infinite coordinates if weights are ever
 extended further.
@@ -231,7 +246,38 @@ four-point scheme, with its negative weight, has no such safety net.
   too: ×1.032 per level at `w = −0.15`, ×1.270 at `w = −0.25`. The
   convergent window is bounded in *both* directions.
 
-### 6.3 Approximating vs interpolating, side by side
+### 6.3 Open polylines: endpoint behavior
+
+With the polygon opened (the "closed polygon" toggle, or the Arc preset),
+both schemes pin the endpoints and only refine the interior — Chaikin by
+re-emitting the boundary points around interior cuts, four-point by
+duplicating the missing neighbors at the boundary:
+
+![Open arc under both schemes](img/open-arc.png)
+*The arc preset (216° of a circle, 7 points). Both curves start and end
+exactly at the polyline's endpoints; four-point additionally passes through
+every interior point.*
+
+This feature cost almost nothing: endpoint handling was implemented and
+unit-tested in the math core from the start (Phases 2–3), and the `closed`
+flag already flowed through refinement, perimeter measurement, and drawing —
+the addition was one checkbox and one preset.
+
+### 6.4 Asymmetric Chaikin
+
+Unlinking the cut sliders gives the two cuts independent depths: `t₁`
+measured from the edge start, `t₂` from the edge end. The mask's weights
+remain convex (each new point still lies on its edge), so the polygon can
+never explode and the scheme still converges — but the mask loses its
+symmetry and the limit curve visibly favors one side of every corner:
+
+![Asymmetric Chaikin](img/chaikin-asym.png)
+*t₁ = 0.1, t₂ = 0.6: corners are cut lopsidedly, producing a skewed but
+still perfectly convergent curve (perimeter ratio 1.000 in the panel). A
+useful contrast to the four-point experiments: this is a deformation that
+degrades* aesthetics *without ever threatening* convergence.
+
+### 6.5 Approximating vs interpolating, side by side
 
 With both schemes at canonical weights on the same polygon, the contrast the
 project was built to demonstrate is immediate: Chaikin trades exactness for
