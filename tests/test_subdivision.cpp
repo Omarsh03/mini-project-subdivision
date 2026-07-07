@@ -1,7 +1,144 @@
-// Unit tests for the subdivision math core (include/subdiv/).
-// Phase 0 placeholder — the assert-based harness and real tests are added
-// in Phase 1 alongside the math they verify.
+// Assert-based unit tests for the subdivision math core (include/subdiv/).
+// Runs via CTest; exits non-zero on any failure.
+
+#include <cmath>
+#include <cstdio>
+#include <vector>
+
+#include "subdiv/polygon.hpp"
+#include "subdiv/scheme.hpp"
+#include "subdiv/vec2.hpp"
+
+using namespace subdiv;
+
+static int g_failures = 0;
+
+#define CHECK(cond)                                                         \
+    do {                                                                    \
+        if (!(cond)) {                                                      \
+            std::printf("FAIL %s:%d  %s\n", __FILE__, __LINE__, #cond);     \
+            ++g_failures;                                                   \
+        }                                                                   \
+    } while (0)
+
+static bool near(float a, float b, float eps = 1e-5f) { return std::fabs(a - b) < eps; }
+static bool near(Vec2 a, Vec2 b, float eps = 1e-5f) { return near(a.x, b.x, eps) && near(a.y, b.y, eps); }
+
+// --- Test doubles ------------------------------------------------------------
+
+// Replaces each point set with the edge midpoints (closed polygons keep
+// their point count) — a minimal well-behaved scheme for exercising refine().
+struct MidpointScheme : SubdivisionScheme {
+    std::vector<Vec2> step(const std::vector<Vec2>& pts, bool /*closed*/) const override {
+        std::vector<Vec2> out;
+        out.reserve(pts.size());
+        for (size_t i = 0; i < pts.size(); ++i)
+            out.push_back(lerp(pts[i], pts[(i + 1) % pts.size()], 0.5f));
+        return out;
+    }
+};
+
+// Scales every coordinate by a large factor each step — guaranteed to
+// escape kDivergenceBound, for exercising the divergence guard.
+struct ExplodingScheme : SubdivisionScheme {
+    std::vector<Vec2> step(const std::vector<Vec2>& pts, bool /*closed*/) const override {
+        std::vector<Vec2> out;
+        out.reserve(pts.size());
+        for (Vec2 v : pts)
+            out.push_back(1000.0f * v);
+        return out;
+    }
+};
+
+// --- Tests -------------------------------------------------------------------
+
+static void testVec2() {
+    CHECK(near(Vec2{1, 2} + Vec2{3, 4}, Vec2{4, 6}));
+    CHECK(near(Vec2{5, 7} - Vec2{2, 3}, Vec2{3, 4}));
+    CHECK(near(2.0f * Vec2{1, -2}, Vec2{2, -4}));
+    CHECK(near(Vec2{1, -2} * 2.0f, Vec2{2, -4}));
+
+    const Vec2 a{0, 0}, b{4, 8};
+    CHECK(near(lerp(a, b, 0.0f), a));
+    CHECK(near(lerp(a, b, 1.0f), b));
+    CHECK(near(lerp(a, b, 0.5f), Vec2{2, 4}));
+    CHECK(near(lerp(a, b, 0.25f), Vec2{1, 2}));
+    CHECK(near(lerp(a, b, 1.5f), Vec2{6, 12})); // extrapolation must work too
+
+    CHECK(isFinite(Vec2{1, 1}));
+    CHECK(!isFinite(Vec2{std::nanf(""), 0}));
+    CHECK(!isFinite(Vec2{0, INFINITY}));
+}
+
+static void testPresets() {
+    const Polygon sq = presets::square();
+    CHECK(sq.pts.size() == 4);
+    CHECK(sq.closed);
+
+    const Polygon st = presets::star(5);
+    CHECK(st.pts.size() == 10);
+    CHECK(near(st.pts[0], Vec2{0.0f, -0.9f})); // first spike points up (y grows downward on screen later)
+
+    const Polygon zz = presets::zigzag(6);
+    CHECK(zz.pts.size() == 2 * 6 + 1 + 2);
+    CHECK(zz.closed);
+
+    // Random preset is deterministic per seed.
+    const Polygon r1 = presets::random(10, 42);
+    const Polygon r2 = presets::random(10, 42);
+    const Polygon r3 = presets::random(10, 43);
+    CHECK(r1.pts.size() == 10);
+    bool sameSeedEqual = true;
+    for (size_t i = 0; i < r1.pts.size(); ++i)
+        sameSeedEqual = sameSeedEqual && near(r1.pts[i], r2.pts[i]);
+    CHECK(sameSeedEqual);
+    bool differentSeedDiffers = false;
+    for (size_t i = 0; i < r1.pts.size(); ++i)
+        differentSeedDiffers = differentSeedDiffers || !near(r1.pts[i], r3.pts[i]);
+    CHECK(differentSeedDiffers);
+}
+
+static void testRefine() {
+    const Polygon sq = presets::square();
+    const MidpointScheme midpoint;
+
+    const RefineResult r0 = refine(midpoint, sq, 0);
+    CHECK(r0.levels.size() == 1);
+    CHECK(!r0.diverged);
+
+    const RefineResult r3 = refine(midpoint, sq, 3);
+    CHECK(r3.levels.size() == 4); // control polygon + 3 refinements
+    CHECK(!r3.diverged);
+    bool level0IsInput = true;
+    for (size_t i = 0; i < sq.pts.size(); ++i)
+        level0IsInput = level0IsInput && near(r3.levels[0][i], sq.pts[i]);
+    CHECK(level0IsInput);
+    // Midpoints of a centered square stay centered and shrink toward it.
+    CHECK(near(r3.levels[1][0], Vec2{0.0f, -0.7f}));
+}
+
+static void testDivergenceGuard() {
+    const Polygon sq = presets::square();
+    const ExplodingScheme exploding;
+
+    // 1000^3 * 0.7 > 1e6 — must trip the guard before all 8 levels exist.
+    const RefineResult r = refine(exploding, sq, 8);
+    CHECK(r.diverged);
+    CHECK(r.levels.size() < 9);
+    for (const auto& level : r.levels)
+        CHECK(withinBounds(level)); // every retained level is safe to render
+}
 
 int main() {
-    return 0;
+    testVec2();
+    testPresets();
+    testRefine();
+    testDivergenceGuard();
+
+    if (g_failures == 0) {
+        std::printf("All tests passed.\n");
+        return 0;
+    }
+    std::printf("%d check(s) FAILED.\n", g_failures);
+    return 1;
 }
