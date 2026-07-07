@@ -36,8 +36,8 @@ All MUST-HAVE features from [PRD.md](../PRD.md):
 - **0–8 iterations** with a ghosted *convergence view* — intermediate levels
   fade in toward the finest curve, visualizing the polygon's march toward the
   limit.
-- **Interactive editing**: draggable vertices (in either viewport) and four
-  shape presets (square, star, zig-zag, seeded random).
+- **Interactive editing**: draggable vertices (in either viewport) and five
+  shape presets (square, star, zig-zag, seeded random, open arc).
 - **Convergence diagnostics**: per-scheme perimeter statistics with a
   "not converging" warning, plus a hard guard against numeric blow-up
   (section 5 explains why *two* mechanisms are needed).
@@ -330,12 +330,17 @@ retention in `refine()`, a **hand-computed Chaikin step** on the square
 (t = 1/4 → cuts at ±0.35), point-count doubling, the degenerate t = 1/2
 case, a **hand-computed four-point insertion** (w = 1/16 → bulge to
 (0, −0.875)), the interpolation property across multiple levels, endpoint
-preservation for open polylines, perimeter measurement, and the divergence
-guard (an artificial exploding scheme must trip it and every retained level
-must stay renderable). The 3D bonus adds combinatorial checks on Loop
-subdivision: vertex/edge/triangle counts and the Euler characteristic across
-two rounds, plus the approximating property (the surface never leaves the
-control cube).
+preservation for open polylines, a hand-computed **asymmetric Chaikin** step
+plus a linked-equals-symmetric equivalence check, perimeter and max-edge
+measurement (the quantities behind the convergence plots), **degenerate
+inputs** (coincident and collinear vertices must stay finite through 8
+rounds of both schemes), and the divergence guard (an artificial exploding
+scheme must trip it and every retained level must stay renderable). The 3D
+bonus adds combinatorial checks on Loop subdivision: vertex/edge/triangle
+counts and the Euler characteristic across two rounds, plus the
+approximating property (the surface never leaves the control cube). A
+GitHub Actions workflow builds the project and runs the full suite on every
+push.
 
 ## 9. Challenges encountered
 
@@ -368,6 +373,7 @@ prices of convergence.
 
 The 3D bonus closes the loop, so to speak: the same one-step-rule idea that
 smooths a polygon into a B-spline rounds a cube toward a smooth surface,
-extraordinary vertices and all. Natural extensions (kept out of scope):
-open-polyline editing in the UI, asymmetric Chaikin cuts, and shaded (rather
-than wireframe) rendering of the subdivided surface.
+extraordinary vertices and all. Natural extensions (consciously kept out of
+scope; see PRD): inserting/deleting control vertices with the mouse, pan and
+zoom of the canvas, and shaded (rather than wireframe) rendering of the
+subdivided surface.

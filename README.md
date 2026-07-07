@@ -7,6 +7,15 @@ A C++ desktop application that visualizes curve subdivision schemes —
 (interpolating) — side by side on a shared, editable control polygon, with
 free control over the subdivision weights and iteration count.
 
+**Why subdivision?** A rule a few lines long, applied repeatedly to a coarse
+polygon, converges to a smooth limit curve — the idea behind B-splines and
+the subdivision surfaces used throughout film and CAD. This app demonstrates
+the two fundamental flavors of that idea (approximating vs. interpolating)
+and, by letting you push the weights away from their canonical values, shows
+*live* where and why convergence breaks down into roughness, fractals, or
+divergence — the canonical weights are not conventions but the exact prices
+of a smooth limit.
+
 ![Chaikin vs four-point on the star preset](docs/img/hero.png)
 
 Computer Graphics course mini-project (solo). Planning documents:
@@ -68,8 +77,10 @@ ctest --test-dir build
 ```
 
 Unit tests cover the math core: vector ops, presets, hand-computed
-subdivision steps for both schemes, the interpolation property, perimeter
-measurement, and the divergence guard.
+subdivision steps for both schemes (symmetric and asymmetric), the
+interpolation property, perimeter and max-edge measurement, degenerate
+inputs, the divergence guard, and the Loop-subdivision mesh combinatorics.
+GitHub Actions runs the suite on every push (badge above).
 
 ## Controls
 
@@ -116,4 +127,5 @@ src/              application: main loop, app state, ImGui panel, canvas,
 tests/            assert-based tests, wired to CTest
 external/imgui/   vendored Dear ImGui (pinned v1.92.8, MIT)
 docs/             course report and screenshots
+.github/          CI workflow (build + tests on every push)
 ```
