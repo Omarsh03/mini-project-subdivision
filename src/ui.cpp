@@ -59,6 +59,35 @@ void drawPanel(AppState& state) {
         state.dirty = true;
     schemeStats(state.fourPointResult, state.iterations);
 
+    ImGui::SeparatorText("Control polygon");
+    if (ImGui::Button("Square")) {
+        state.polygon = subdiv::presets::square();
+        state.dirty = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Star")) {
+        state.polygon = subdiv::presets::star();
+        state.dirty = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Zig-zag")) {
+        state.polygon = subdiv::presets::zigzag();
+        state.dirty = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Random")) {
+        state.polygon = subdiv::presets::random(10, state.nextRandomSeed++);
+        state.dirty = true;
+    }
+    ImGui::TextDisabled("drag vertices with the mouse (in either viewport)");
+
+    ImGui::SeparatorText("Display");
+    ImGui::Checkbox("control polygon", &state.display.showControlPolygon);
+    ImGui::SameLine();
+    ImGui::Checkbox("handles", &state.display.showHandles);
+    ImGui::Checkbox("intermediate levels (convergence view)",
+                    &state.display.showIntermediateLevels);
+
     ImGui::End();
 }
 

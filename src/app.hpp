@@ -14,6 +14,13 @@ inline constexpr float kFourPointTension = 0.0625f; // 1/16, cubic precision
 inline constexpr float kFourPointC1Bound = 0.1545085f;
 } // namespace canonical
 
+// Render-only options; these never invalidate the refinement caches.
+struct DisplayOptions {
+    bool showControlPolygon = true;
+    bool showHandles = true;
+    bool showIntermediateLevels = true; // ghosted convergence view
+};
+
 // The whole application model: one control polygon, two parameterized
 // schemes, and the cached refinement of both. UI and input mutate the
 // parameters and set `dirty`; recomputeIfDirty() refreshes the caches
@@ -23,6 +30,15 @@ struct AppState {
     subdiv::ChaikinScheme chaikin{canonical::kChaikinRatio};
     subdiv::FourPointScheme fourPoint{canonical::kFourPointTension};
     int iterations = 4;
+    DisplayOptions display;
+
+    // Vertex-drag state: index into polygon.pts, and which viewport
+    // (0 = left, 1 = right) the drag started in — its transform maps the
+    // mouse back to world space.
+    int draggedVertex = -1;
+    int draggedViewport = 0;
+
+    std::uint32_t nextRandomSeed = 1; // bumps so each Random click differs
 
     bool dirty = true;
     subdiv::RefineResult chaikinResult;

@@ -28,6 +28,7 @@ add_executable(subdivision_visualizer
     src/main.cpp
     src/app.cpp
     src/canvas.cpp
+    src/input.cpp
     src/ui.cpp
     src/viewport.cpp)
 target_include_directories(subdivision_visualizer PRIVATE include)
