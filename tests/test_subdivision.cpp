@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "subdiv/chaikin.hpp"
+#include "subdiv/fourpoint.hpp"
 #include "subdiv/polygon.hpp"
 #include "subdiv/scheme.hpp"
 #include "subdiv/vec2.hpp"
@@ -164,12 +165,51 @@ static void testChaikin() {
     CHECK(near(openOnce.back(), open.pts.back()));
 }
 
+static void testFourPoint() {
+    const Polygon sq = presets::square(); // (-.7,-.7) (.7,-.7) (.7,.7) (-.7,.7)
+    const FourPointScheme fourPoint(0.0625f);
+
+    const std::vector<Vec2> once = fourPoint.step(sq.pts, sq.closed);
+    CHECK(once.size() == 8); // point count doubles for closed polygons
+
+    // Interpolation property: every original point survives, at even indices.
+    for (size_t i = 0; i < sq.pts.size(); ++i)
+        CHECK(near(once[2 * i], sq.pts[i]));
+
+    // Hand-computed insertion on the bottom edge at w = 1/16:
+    // M = (1/2 + w)(P0 + P1) - w(P3 + P2)
+    //   = 0.5625*(0, -1.4) - 0.0625*(0, 1.4) = (0, -0.875)
+    // — bulges outward past the edge, as an interpolating curve must.
+    CHECK(near(once[1], Vec2{0.0f, -0.875f}));
+
+    // The interpolation property holds across iterated refinement too.
+    const RefineResult r = refine(fourPoint, sq, 3);
+    CHECK(!r.diverged);
+    CHECK(r.levels[3].size() == 32);
+    for (size_t i = 0; i < sq.pts.size(); ++i)
+        CHECK(near(r.levels[3][8 * i], sq.pts[i])); // spacing doubles per level
+
+    // w = 0 degenerates to plain midpoint insertion.
+    const FourPointScheme zero(0.0f);
+    const std::vector<Vec2> mids = zero.step(sq.pts, sq.closed);
+    CHECK(near(mids[1], Vec2{0.0f, -0.7f}));
+
+    // Open polylines: endpoints kept, count is 2n-1.
+    Polygon open = presets::square();
+    open.closed = false;
+    const std::vector<Vec2> openOnce = fourPoint.step(open.pts, open.closed);
+    CHECK(openOnce.size() == 7);
+    CHECK(near(openOnce.front(), open.pts.front()));
+    CHECK(near(openOnce.back(), open.pts.back()));
+}
+
 int main() {
     testVec2();
     testPresets();
     testRefine();
     testDivergenceGuard();
     testChaikin();
+    testFourPoint();
 
     if (g_failures == 0) {
         std::printf("All tests passed.\n");
