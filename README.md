@@ -1,5 +1,7 @@
 # Interactive 2D Subdivision Visualizer
 
+[![CI](https://github.com/Omarsh03/mini-project-subdivision/actions/workflows/ci.yml/badge.svg?branch=mini-project%2Fsubdivision)](https://github.com/Omarsh03/mini-project-subdivision/actions/workflows/ci.yml)
+
 A C++ desktop application that visualizes curve subdivision schemes —
 **Chaikin corner cutting** (approximating) and the **four-point scheme**
 (interpolating) — side by side on a shared, editable control polygon, with
