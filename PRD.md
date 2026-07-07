@@ -43,23 +43,39 @@ free control over the subdivision weights and the number of iterations.
 | M6 | **Step-by-step convergence view**: intermediate subdivision levels can be shown simultaneously (ghosted/faded), so the polygon can be seen converging toward the limit curve |
 | M7 | **Interactive control polygon**: drag vertices with the mouse; shape presets (square, star, random, zig-zag) to restart from |
 | M8 | **Live stats**: point count per level, and a simple divergence warning when the curve blows up (NaN/huge coordinates) |
+| M9 | **Live convergence plot** *(added 2026-07)*: per-level perimeter (and max edge length) plotted in the panel for each scheme — the report's ratio table as a live instrument: drag a weight slider and watch the plot flip from decaying-to-flat to growing |
 
 ### NICE-TO-HAVE
 
-| # | Feature |
-|---|---------|
-| N1 | Add / delete control vertices with the mouse (click on edge to insert, right-click to remove) |
-| N2 | Open (non-closed) polyline mode with proper endpoint handling |
-| N3 | Asymmetric Chaikin: two independent cut parameters `t₁`, `t₂` instead of the symmetric pair `t : 1−t` (richer breakage experiments) |
-| N4 | Pan / zoom of the canvas |
-| N5 | Overlay mode: both schemes drawn in one viewport for direct comparison |
+| # | Feature | Status (2026-07) |
+|---|---------|------------------|
+| N1 | Add / delete control vertices with the mouse (click on edge to insert, right-click to remove) | deferred |
+| N2 | Open (non-closed) polyline mode with proper endpoint handling, plus one open preset | **selected for implementation** |
+| N3 | Asymmetric Chaikin: two independent cut parameters `t₁`, `t₂` instead of the symmetric pair `t : 1−t`, with a "link" toggle preserving the symmetric default | **selected for implementation** |
+| N4 | Pan / zoom of the canvas | deferred |
+| N5 | Overlay mode: both schemes drawn in one viewport for direct comparison | deferred |
 
 ### OUT-OF-SCOPE / STRETCH
 
 | # | Feature |
 |---|---------|
-| S1 | **3D bonus**: Loop subdivision of a cube rendered as a wireframe/flat-shaded mesh — *only if the 2D core is finished and polished*. No correct treatment of extraordinary vertices required |
+| S1 | **3D bonus**: Loop subdivision of a cube rendered as a wireframe/flat-shaded mesh — *only if the 2D core is finished and polished*. No correct treatment of extraordinary vertices required. *(Completed 2026-07 as wireframe.)* |
 | — | Subdivision surfaces in general (Catmull–Clark etc.), texture/shading work, file import/export, animation export, touch/gesture input |
+
+**Consciously deferred (2026-07 scope decision)** — considered and set aside,
+not forgotten:
+
+- **N1 (vertex insert/delete)**: highest interaction-code cost on the list
+  (edge hit-testing, input precedence) for modest grading payoff.
+- **N5 (overlay mode)**: the side-by-side view plus shared editing already
+  makes the comparison; an overlay adds a mode, not an insight.
+- **CI (GitHub Actions build + ctest)**: pure professionalism signal with no
+  pedagogical content; revisit only if time is truly spare.
+- **Exact limit-curve overlay (quadratic B-spline for Chaikin)**: new math
+  and rendering — violates the "reuse existing infrastructure" constraint;
+  the ghosted convergence view already tells this story.
+- **Shaded 3D rendering**: needs depth sorting/backface culling the
+  SDL_Renderer pipeline doesn't have; classic scope trap, wireframe suffices.
 
 ## 3. User-facing behavior
 
@@ -83,6 +99,10 @@ Running `./subdivision_visualizer` opens a single desktop window (via WSLg):
   - Preset buttons: Square, Star, Random, Zig-zag.
   - Stats readout: number of points at the displayed level per scheme;
     red "diverging" warning when coordinates explode.
+  - Per-scheme convergence plots (M9): perimeter and max edge length per
+    level, updating live with every parameter change.
+  - "closed polygon" toggle (N2) and an open preset; "link cuts" toggle in
+    the Chaikin section exposing independent `t₁`/`t₂` when unlinked (N3).
 - **Mouse**: drag a vertex handle in either viewport to move it — both
   viewports update instantly since they share the control polygon.
 

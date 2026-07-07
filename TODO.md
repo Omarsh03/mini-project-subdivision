@@ -93,3 +93,45 @@ Only if time remains, in this order (each independently committable):
       — ☑ commit + push "Add Loop subdivision 3D bonus"
 - [x] Update README/REPORT for whichever extras landed
       — ☑ commit + push "Document optional features"
+
+## Phase 8 — Post-core additions (2026-07 scope decision) [REQUIRED]
+
+Priority order fixed by the scope decision; design notes in PLAN.md §7.
+N1, N5, CI, limit-curve overlay and shaded 3D stay deferred (PRD).
+
+### 8.1 Live convergence plot (M9)
+
+- [ ] `maxEdgeLength()` in `scheme.hpp` (sup-norm convergence indicator)
+      + unit tests alongside `perimeter()`'s
+- [ ] Per-scheme `ImGui::PlotLines` of perimeter and max edge length per
+      level in `ui.cpp::schemeStats()` (no AppState changes)
+- [ ] Manual check: canonical weights → flat/decaying plots; fractal
+      weights → growing perimeter, non-vanishing max edge
+- [ ] ☑ **Commit + push**: "Add live convergence plots to the panel"
+
+### 8.2 Open-polyline mode (N2)
+
+- [ ] "closed polygon" checkbox in the Control-polygon section (sets dirty)
+- [ ] `presets::arc()` open preset + preset button + `--preset arc` CLI value
+- [ ] Unit test for the arc preset; manual check that both schemes keep
+      endpoints (math already unit-tested since Phases 2–3)
+- [ ] ☑ **Commit + push**: "Add open-polyline mode with arc preset"
+
+### 8.3 Asymmetric Chaikin (N3)
+
+- [ ] `ChaikinScheme`: `t1`/`t2` members, cuts `lerp(A,B,t1)` and
+      `lerp(A,B,1−t2)`; single-float constructor keeps call sites valid
+- [ ] "link cuts (symmetric)" checkbox (default on = current behavior);
+      unlinked shows two sliders; reset restores 0.25/0.25 and re-links
+- [ ] `--chaikin-t2` CLI flag for reproducible figures
+- [ ] Unit tests: hand-computed asymmetric step; linked == symmetric
+- [ ] ☑ **Commit + push**: "Add asymmetric Chaikin cuts"
+
+### 8.4 Documentation
+
+- [ ] README controls table: plots, closed-polygon toggle, Arc preset,
+      link-cuts toggle, new CLI flags
+- [ ] REPORT: convergence plot as the live form of §5; open-polyline and
+      asymmetric-Chaikin observations with figures
+- [ ] ☑ **Commit + push**: "Document convergence plots, open polylines,
+      asymmetric Chaikin"
