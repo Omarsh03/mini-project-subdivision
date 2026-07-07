@@ -5,10 +5,26 @@ A C++ desktop application that visualizes curve subdivision schemes —
 (interpolating) — side by side on a shared, editable control polygon, with
 free control over the subdivision weights and iteration count.
 
-Computer Graphics course mini-project. Planning documents: [PRD.md](PRD.md),
-[PLAN.md](PLAN.md), [TODO.md](TODO.md).
+![Chaikin vs four-point on the star preset](docs/img/hero.png)
 
-> **Status:** Phase 0 — project skeleton (SDL2 window + empty ImGui panel).
+Computer Graphics course mini-project (solo). Planning documents:
+[PRD.md](PRD.md), [PLAN.md](PLAN.md), [TODO.md](TODO.md).
+Course report with the algorithm write-up and weight-convergence
+experiments: **[docs/REPORT.md](docs/REPORT.md)**.
+
+## Features
+
+- Chaikin corner cutting with adjustable cut ratio `t` (canonical 1/4 : 3/4)
+- Four-point interpolating subdivision with adjustable tension `w`
+  (canonical 1/16), C¹ bound annotated in the UI
+- Side-by-side viewports sharing one control polygon — the
+  approximating-vs-interpolating contrast at a glance
+- 0–8 iterations with a ghosted step-by-step convergence view
+- Weight sliders reach far beyond the canonical values; live perimeter
+  statistics flag when refinement stops converging (rough/fractal regime),
+  plus a hard guard against numeric blow-up
+- Draggable control vertices, shape presets (square, star, zig-zag, random)
+- Reproducible screenshot mode for documentation
 
 ## Prerequisites (Ubuntu / WSL2)
 
@@ -16,7 +32,7 @@ Computer Graphics course mini-project. Planning documents: [PRD.md](PRD.md),
 sudo apt install -y cmake g++ libsdl2-dev
 ```
 
-Dear ImGui is vendored in `external/imgui/` — no further dependencies.
+Dear ImGui v1.92.8 is vendored in `external/imgui/` — no further dependencies.
 
 ## Build
 
@@ -39,6 +55,47 @@ Under WSL2 the window opens on the Windows desktop via WSLg.
 ctest --test-dir build
 ```
 
+Unit tests cover the math core: vector ops, presets, hand-computed
+subdivision steps for both schemes, the interpolation property, perimeter
+measurement, and the divergence guard.
+
 ## Controls
 
-To be documented as features land (see [TODO.md](TODO.md)).
+| Control | Effect |
+|---|---|
+| **iterations** slider | Number of subdivision rounds (0–8), applied to both schemes |
+| **cut ratio t** slider | Chaikin cut parameter; `reset` returns to the canonical 0.25 |
+| **tension w** slider | Four-point tension; `reset` returns to the canonical 0.0625 |
+| **Square / Star / Zig-zag / Random** | Load a preset control polygon (Random differs each click) |
+| **control polygon / handles** | Toggle drawing of the input polygon and its vertex markers |
+| **intermediate levels** | Ghosted earlier levels showing convergence toward the limit curve |
+| **Left-drag a vertex** | Move a control point (works in either viewport; both update) |
+
+Per scheme, the panel reports levels computed, point count, and the finest
+level's perimeter with its per-level growth ratio. An orange warning appears
+when the perimeter keeps growing (the scheme is no longer converging); a red
+one if coordinates overflow the safety bound entirely.
+
+## Screenshot mode
+
+Renders one frame with the given parameters and exits — used to produce
+every image in the report reproducibly:
+
+```sh
+./build/subdivision_visualizer --screenshot out.bmp \
+    --preset star --iterations 6 --fourpoint-w 0.30
+```
+
+Flags: `--preset square|star|zigzag|random`, `--iterations n`,
+`--chaikin-t x`, `--fourpoint-w x`.
+
+## Repository layout
+
+```
+include/subdiv/   header-only subdivision math (no SDL/ImGui) — unit-tested
+src/              application: main loop, app state, ImGui panel, canvas,
+                  viewport mapping, mouse input
+tests/            assert-based tests, wired to CTest
+external/imgui/   vendored Dear ImGui (pinned v1.92.8, MIT)
+docs/             course report and screenshots
+```

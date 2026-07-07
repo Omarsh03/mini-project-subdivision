@@ -1,9 +1,15 @@
 // Entry point: SDL2 window + Dear ImGui context and the main loop.
 // Renders Chaikin (left) and four-point (right) subdivision of a shared
 // control polygon side by side, with a live parameter panel.
+//
+// A headless-ish screenshot mode exists for reproducible documentation
+// images:  --screenshot out.bmp [--preset name] [--iterations n]
+//          [--chaikin-t x] [--fourpoint-w x]
 
 #include <SDL.h>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
@@ -15,7 +21,82 @@
 #include "ui.hpp"
 #include "viewport.hpp"
 
-int main(int, char**) {
+namespace {
+
+struct CliOptions {
+    const char* screenshotPath = nullptr; // when set: render, save, exit
+    bool valid = true;
+};
+
+CliOptions parseArgs(int argc, char** argv, AppState& state) {
+    CliOptions opts;
+    for (int i = 1; i < argc; ++i) {
+        const char* arg = argv[i];
+        const char* value = (i + 1 < argc) ? argv[i + 1] : nullptr;
+        if (std::strcmp(arg, "--screenshot") == 0 && value) {
+            opts.screenshotPath = value;
+            ++i;
+        } else if (std::strcmp(arg, "--iterations") == 0 && value) {
+            state.iterations = std::atoi(value);
+            ++i;
+        } else if (std::strcmp(arg, "--chaikin-t") == 0 && value) {
+            state.chaikin.t = std::strtof(value, nullptr);
+            ++i;
+        } else if (std::strcmp(arg, "--fourpoint-w") == 0 && value) {
+            state.fourPoint.w = std::strtof(value, nullptr);
+            ++i;
+        } else if (std::strcmp(arg, "--preset") == 0 && value) {
+            if (std::strcmp(value, "square") == 0)
+                state.polygon = subdiv::presets::square();
+            else if (std::strcmp(value, "star") == 0)
+                state.polygon = subdiv::presets::star();
+            else if (std::strcmp(value, "zigzag") == 0)
+                state.polygon = subdiv::presets::zigzag();
+            else if (std::strcmp(value, "random") == 0)
+                state.polygon = subdiv::presets::random();
+            else
+                opts.valid = false;
+            ++i;
+        } else {
+            opts.valid = false;
+        }
+        if (!opts.valid) {
+            std::fprintf(stderr,
+                         "usage: subdivision_visualizer [--screenshot out.bmp] "
+                         "[--preset square|star|zigzag|random] [--iterations n] "
+                         "[--chaikin-t x] [--fourpoint-w x]\n");
+            break;
+        }
+    }
+    return opts;
+}
+
+// Reads the current backbuffer (call before SDL_RenderPresent) into a BMP.
+bool saveScreenshot(SDL_Renderer* renderer, const char* path) {
+    int w = 0, h = 0;
+    SDL_GetRendererOutputSize(renderer, &w, &h);
+    SDL_Surface* surface =
+        SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ABGR8888);
+    if (!surface)
+        return false;
+    const bool ok =
+        SDL_RenderReadPixels(renderer, nullptr, surface->format->format,
+                             surface->pixels, surface->pitch) == 0 &&
+        SDL_SaveBMP(surface, path) == 0;
+    SDL_FreeSurface(surface);
+    if (!ok)
+        std::fprintf(stderr, "screenshot failed: %s\n", SDL_GetError());
+    return ok;
+}
+
+} // namespace
+
+int main(int argc, char** argv) {
+    AppState state;
+    const CliOptions cli = parseArgs(argc, argv, state);
+    if (!cli.valid)
+        return 2;
+
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
         std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
@@ -42,11 +123,10 @@ int main(int, char**) {
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImGui::GetIO().IniFilename = nullptr; // deterministic layout, no stray file
     ImGui::StyleColorsDark();
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer2_Init(renderer);
-
-    AppState state;
 
     const SDL_Color kControlColor{140, 140, 150, 255};
     const SDL_Color kHandleColor{220, 220, 230, 255};
@@ -59,6 +139,8 @@ int main(int, char**) {
     Viewport left, right;
 
     bool running = true;
+    int frame = 0;
+    int exitCode = 0;
     while (running) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -129,6 +211,13 @@ int main(int, char**) {
         drawSchemeView(right, state.fourPointResult, kFourPointColor);
 
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
+
+        // Give ImGui a couple of frames to settle its layout, then capture.
+        if (cli.screenshotPath && ++frame >= 3) {
+            exitCode = saveScreenshot(renderer, cli.screenshotPath) ? 0 : 1;
+            running = false;
+        }
+
         SDL_RenderPresent(renderer);
     }
 
@@ -138,5 +227,5 @@ int main(int, char**) {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-    return 0;
+    return exitCode;
 }

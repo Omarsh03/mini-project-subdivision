@@ -30,6 +30,22 @@ struct RefineResult {
 // so anything near this bound is unrecoverably off-screen anyway.
 inline constexpr float kDivergenceBound = 1.0e6f;
 
+// Total polyline length. For a convergent scheme this approaches the limit
+// curve's arc length (per-level ratio -> 1); sustained growth per level is
+// the practical tell that the weights left the convergent regime, long
+// before coordinates blow up in absolute terms.
+inline float perimeter(const std::vector<Vec2>& pts, bool closed) {
+    if (pts.size() < 2)
+        return 0.0f;
+    float length = 0.0f;
+    const size_t segments = closed ? pts.size() : pts.size() - 1;
+    for (size_t i = 0; i < segments; ++i) {
+        const Vec2 d = pts[(i + 1) % pts.size()] - pts[i];
+        length += std::sqrt(d.x * d.x + d.y * d.y);
+    }
+    return length;
+}
+
 inline bool withinBounds(const std::vector<Vec2>& pts) {
     for (Vec2 v : pts) {
         if (!isFinite(v) || std::abs(v.x) > kDivergenceBound || std::abs(v.y) > kDivergenceBound)

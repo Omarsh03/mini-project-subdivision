@@ -119,6 +119,21 @@ static void testRefine() {
     CHECK(near(r3.levels[1][0], Vec2{0.0f, -0.7f}));
 }
 
+static void testPerimeter() {
+    const Polygon sq = presets::square(); // side 1.4 -> perimeter 5.6
+    CHECK(near(perimeter(sq.pts, true), 5.6f));
+    CHECK(near(perimeter(sq.pts, false), 4.2f)); // open: closing edge dropped
+
+    // Chaikin at the canonical ratio shortens the polygon toward the limit
+    // curve's arc length; the per-level ratio must settle near 1.
+    const ChaikinScheme chaikin(0.25f);
+    const RefineResult r = refine(chaikin, sq, 6);
+    const float p5 = perimeter(r.levels[5], true);
+    const float p6 = perimeter(r.levels[6], true);
+    CHECK(p6 < 5.6f);
+    CHECK(p6 / p5 > 0.99f && p6 / p5 < 1.01f);
+}
+
 static void testDivergenceGuard() {
     const Polygon sq = presets::square();
     const ExplodingScheme exploding;
@@ -207,6 +222,7 @@ int main() {
     testVec2();
     testPresets();
     testRefine();
+    testPerimeter();
     testDivergenceGuard();
     testChaikin();
     testFourPoint();

@@ -23,13 +23,28 @@ bool weightControl(const char* label, float* value, float min, float max,
     return changed;
 }
 
-void schemeStats(const subdiv::RefineResult& result, int requestedIterations) {
+// Sustained perimeter growth above this per-level ratio marks the
+// rough/fractal regime; convergent settings decay to 1.0 (measured
+// separation: <= 1.006 convergent vs >= 1.05 fractal on the presets).
+constexpr float kGrowthWarnRatio = 1.02f;
+
+void schemeStats(const subdiv::RefineResult& result, int requestedIterations, bool closed) {
     const std::size_t levels = result.levels.size();
     ImGui::Text("levels computed: %zu / %d, points at finest: %zu",
                 levels - 1, requestedIterations, result.levels.back().size());
+    if (levels >= 2) {
+        const float prev = subdiv::perimeter(result.levels[levels - 2], closed);
+        const float last = subdiv::perimeter(result.levels[levels - 1], closed);
+        const float ratio = prev > 0.0f ? last / prev : 1.0f;
+        ImGui::Text("perimeter: %.3f (x%.3f per level)", last, ratio);
+        if (ratio > kGrowthWarnRatio) {
+            ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.2f, 1.0f),
+                               "perimeter growing - NOT converging (rough/fractal)");
+        }
+    }
     if (result.diverged) {
         ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.3f, 1.0f),
-                           "DIVERGING — refinement stopped early");
+                           "COORDINATES EXPLODED - refinement stopped early");
     }
 }
 
@@ -49,7 +64,7 @@ void drawPanel(AppState& state) {
                       "canonical t = 0.25 (the 1/4 : 3/4 rule); "
                       "t = 0.5 degenerates, t > 0.5 cuts cross over"))
         state.dirty = true;
-    schemeStats(state.chaikinResult, state.iterations);
+    schemeStats(state.chaikinResult, state.iterations, state.polygon.closed);
 
     ImGui::SeparatorText("Four-point (interpolating)");
     if (weightControl("tension w", &state.fourPoint.w, -0.25f, 0.40f,
@@ -57,7 +72,7 @@ void drawPanel(AppState& state) {
                       "canonical w = 1/16 = 0.0625; C1 only for "
                       "0 < w < (sqrt(5)-1)/8 ~= 0.1545"))
         state.dirty = true;
-    schemeStats(state.fourPointResult, state.iterations);
+    schemeStats(state.fourPointResult, state.iterations, state.polygon.closed);
 
     ImGui::SeparatorText("Control polygon");
     if (ImGui::Button("Square")) {
