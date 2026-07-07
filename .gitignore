@@ -1,0 +1,29 @@
+# Build directories
+build/
+out/
+cmake-build-*/
+
+# Binaries & objects
+*.o
+*.obj
+*.a
+*.so
+*.exe
+subdivision_visualizer
+test_subdivision
+
+# IDE / editor files
+.vscode/
+.idea/
+*.swp
+*~
+.cache/
+compile_commands.json
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Dear ImGui runtime layout file
+imgui.ini

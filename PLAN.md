@@ -161,8 +161,48 @@ main.cpp ── owns SDL window/renderer + ImGui context, runs the loop:
 | Risk | Mitigation |
 |---|---|
 | **Divergent weights produce NaN/inf or gigantic coordinates**, freezing or crashing the renderer | `refine` clamps: stop iterating when any coordinate is non-finite or exceeds a bound; UI shows a "diverging" badge (M8). Point count is inherently capped by the iteration limit (8) |
+| **Post-core additions destabilize working features** | All three 2026-07 additions (§7) are strictly additive: the plot only reads existing caches, open mode flips a flag the whole pipeline already honors, and asymmetric Chaikin defaults to linked sliders that reproduce the current behavior bit-for-bit |
 | **Four-point needs ≥ 4 points** (and open-curve endpoints need special casing) | Enforce a minimum of 4 control points in the UI; ship closed-polygon mode first (must-have), open mode as N2 with endpoint duplication |
 | **SDL2/ImGui under WSLg** (untested on this machine) | Verified WSLg display works (`DISPLAY=:0`); ImGui's SDL2+SDLRenderer2 backend is the most battle-tested pairing; pin a known-good ImGui release. Fallback: raylib swap would only touch `src/` |
 | **Vertex dragging vs. ImGui input conflict** (clicks meant for the canvas hitting the panel and vice versa) | Standard guard: ignore canvas mouse events when `ImGui::GetIO().WantCaptureMouse` is true |
 | **/mnt/c (Windows drive) filesystem is slow under WSL** | Project is tiny; build times are seconds. `build/` stays untracked, so no git overhead |
 | **Time budget (~1 day)** | Must-haves front-loaded in TODO phases 0–5; every nice-to-have is genuinely skippable; the 3D stretch goal is last and fully optional |
+
+## 7. Post-core additions (2026-07 scope decision)
+
+Three additions after Phases 0–7, chosen for maximal reuse of what exists
+(see PRD "consciously deferred" for what was set aside and why).
+
+### 7.1 Live convergence plot (M9)
+
+Lives entirely in `ui.cpp::schemeStats()`, which already receives the
+`RefineResult` and `closed` flag. Per call, fill two small stack arrays
+(≤ 9 levels) with `perimeter(levels[k], closed)` and a new
+`maxEdgeLength(levels[k], closed)` from the math core, then render them with
+`ImGui::PlotLines` (auto-scaled, ~40 px tall) under the existing stats text.
+No AppState changes, no caching: recomputing both series per frame is a few
+thousand float ops. `maxEdgeLength()` joins `scheme.hpp` beside
+`perimeter()` — it is the sup-norm convergence indicator (must → 0 for a
+convergent scheme) and gets the same unit-test treatment.
+
+### 7.2 Open-polyline mode (N2)
+
+No changes to canvas or viewport: `Polygon.closed` already flows through
+`step()` (endpoint handling implemented and unit-tested in Phases 2–3),
+`refine()`, `perimeter()` (skips the closing edge), and
+`canvas::drawPolyline()` (doesn't append the first point). The work is one
+"closed polygon" checkbox in the Control-polygon section (sets `dirty`),
+one open preset — `presets::arc()`, a ~7-point circular arc — and a
+`--preset arc` CLI value for reproducible figures. Presets carry their own
+`closed` flag; the checkbox reflects and overrides it.
+
+### 7.3 Asymmetric Chaikin (N3)
+
+`ChaikinScheme` replaces `t` with `t1`, `t2`; `step()` emits
+`lerp(A,B,t1)` and `lerp(A,B,1−t2)` — cuts measured from each edge end —
+so `t1 == t2 == t` reproduces the current scheme exactly (the single-float
+constructor keeps existing call sites and tests valid). The UI gains a
+"link cuts (symmetric)" checkbox, default **on**: linked shows today's
+single slider and mirrors it into both parameters; unlinked shows two
+sliders. Reset restores 0.25/0.25 and re-links. Tests: a hand-computed
+asymmetric step plus a linked-equals-symmetric equivalence check.
